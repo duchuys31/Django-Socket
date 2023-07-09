@@ -20,10 +20,7 @@ class ConversationListSerializer(serializers.ModelSerializer):
 
     def get_last_message(self, instance):
         message = instance.message_set.first()
-        if message:
-            return MessageSerializer(instance=message).data
-        else:
-            return None
+        return MessageSerializer(instance=message)
 
 
 class ConversationSerializer(serializers.ModelSerializer):

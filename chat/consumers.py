@@ -22,9 +22,7 @@ class ChatConsumer(WebsocketConsumer):
         async_to_sync(self.channel_layer.group_add)(
             self.room_group_name, self.channel_name
         )
-        print("here2")
         self.accept()
-        print("here3")
 
     def disconnect(self, close_code):
         # Leave room group
@@ -37,14 +35,25 @@ class ChatConsumer(WebsocketConsumer):
         # parse the json data into dictionary object
         text_data_json = json.loads(text_data)
 
-        # unpack the dictionary into the necessary parts
+        # Send message to room group
+        chat_type = {"type": "chat_message"}
+        return_dict = {**chat_type, **text_data_json}
+        async_to_sync(self.channel_layer.group_send)(
+            self.room_group_name,
+            return_dict,
+        )
+
+    # Receive message from room group
+    def chat_message(self, event):
+        text_data_json = event.copy()
+        text_data_json.pop("type")
         message, attachment = (
             text_data_json["message"],
             text_data_json.get("attachment"),
         )
 
         conversation = Conversation.objects.get(id=int(self.room_name))
-        sender = self.scope["user"]
+        sender = self.scope['user']
 
         # Attachment
         if attachment:
@@ -65,35 +74,10 @@ class ChatConsumer(WebsocketConsumer):
                 text=message,
                 conversation_id=conversation,
             )
-        # Send message to room group
-        chat_type = {"type": "chat_message"}
-        message_serializer = (dict(MessageSerializer(instance=_message).data))
-        return_dict = {**chat_type, **message_serializer}
-        if _message.attachment:
-            async_to_sync(self.channel_layer.group_send)(
-                self.room_group_name,
-                {
-                    "type": "chat_message",
-                    "message": message,
-                    "sender": sender.email,
-                    "attachment": _message.attachment.url,
-                    "time": str(_message.timestamp),
-                },
-            )
-        else:
-            async_to_sync(self.channel_layer.group_send)(
-                self.room_group_name,
-                return_dict,
-            )
-
-    # Receive message from room group
-    def chat_message(self, event):
-        dict_to_be_sent = event.copy()
-        dict_to_be_sent.pop("type")
-
+        serializer = MessageSerializer(instance=_message)
         # Send message to WebSocket
         self.send(
-                text_data=json.dumps(
-                    dict_to_be_sent
-                )
+            text_data=json.dumps(
+                serializer.data
             )
+        )

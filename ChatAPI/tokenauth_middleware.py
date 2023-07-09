@@ -19,8 +19,12 @@ class TokenAuthMiddleware(BaseMiddleware):
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
-        token_key = scope['query_string'].decode().split('=')[-1]
-
-        scope['user'] = await get_user(token_key)
-
+        headers = dict(scope['headers'])
+        print(headers)
+        if b'authorization' in headers:            
+            token_name, token_key = headers[b'authorization'].decode().split()
+            print(token_name, token_key)
+            if token_name == 'Token':
+                scope['user'] = await get_user(token_key)
+                print(scope['user'])
         return await super().__call__(scope, receive, send)
