@@ -53,6 +53,7 @@ class ChatConsumer(WebsocketConsumer):
         )
 
         conversation = Conversation.objects.get(id=int(self.room_name))
+        print(self)
         sender = self.scope['user']
 
         # Attachment
